@@ -71,7 +71,15 @@ export interface Destination {
   lat: number;
   lng: number;
   description: string;
+  landmark?: string;
+  currency?: string;
+  language?: string;
+  photoUrl?: string;
+  culturalFact?: string;
+  historicFact?: string;
+  geoInfo?: string;
   travelTimeMinutes: number;
+  progressiveClue?: string;
   witness: Witness;
   clues: Clue[];
   document?: CaseDocument;

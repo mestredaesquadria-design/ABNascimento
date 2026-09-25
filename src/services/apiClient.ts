@@ -20,7 +20,7 @@ export const ApiClient = {
       }
 
       const data = await res.json();
-      if (data.caseData && data.caseData.destinations?.length >= 4) {
+      if (data.caseData && data.caseData.destinations?.length >= 3) {
         return data;
       }
       throw new Error('Invalid case response');

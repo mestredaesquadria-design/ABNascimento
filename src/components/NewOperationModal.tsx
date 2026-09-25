@@ -85,9 +85,9 @@ export const NewOperationModal: React.FC<NewOperationModalProps> = ({
                 <div className="flex items-center gap-1.5 text-emerald-400 font-bold mb-1">
                   <span>🟢 FÁCIL</span>
                 </div>
-                <div className="text-slate-200 font-bold text-xs">3 pistas por etapa</div>
+                <div className="text-slate-200 font-bold text-xs">3 etapas progressivas</div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Pistas diretas e claras. Ideal para aprendizado de dedução.
+                  3 destinos na rota. Pistas diretas ideais para iniciar a carreira.
                 </p>
               </button>
 
@@ -106,9 +106,9 @@ export const NewOperationModal: React.FC<NewOperationModalProps> = ({
                 <div className="flex items-center gap-1.5 text-amber-400 font-bold mb-1">
                   <span>🟡 MÉDIO</span>
                 </div>
-                <div className="text-slate-200 font-bold text-xs">5 pistas por etapa</div>
+                <div className="text-slate-200 font-bold text-xs">5 etapas progressivas</div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Deduções elaboradas e informações incompletas.
+                  5 destinos na rota. Rastreamento por moedas, culturas e conexões.
                 </p>
               </button>
 
@@ -127,7 +127,10 @@ export const NewOperationModal: React.FC<NewOperationModalProps> = ({
                 <div className="flex items-center gap-1.5 text-red-400 font-bold mb-1">
                   <span>🔴 DIFÍCIL</span>
                 </div>
-                <div className="text-slate-200 font-bold text-xs">7 pistas por etapa</div>
+                <div className="text-slate-200 font-bold text-xs">7 etapas progressivas</div>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  7 destinos na rota. Enigmas profundos e perseguição transcontinental.
+                </p>
                 <p className="text-[10px] text-slate-400 mt-1">
                   Desafio extremo de memória, ambiguidade e tempo rigoroso.
                 </p>

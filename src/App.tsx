@@ -38,6 +38,7 @@ import { NewOperationModal } from './components/NewOperationModal.tsx';
 import { MultiplayerModal } from './components/MultiplayerModal.tsx';
 import { SettingsModal } from './components/SettingsModal.tsx';
 import { GameManualModal } from './components/GameManualModal.tsx';
+import { CityArrivalModal } from './components/CityArrivalModal.tsx';
 
 // Icons
 import { 
@@ -146,6 +147,13 @@ export default function App() {
   const [multiplayerModalOpen, setMultiplayerModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [arrivalModalData, setArrivalModalData] = useState<{
+    destination: Destination;
+    clueNumber: number;
+    totalClues: number;
+    unlockedClueText: string;
+    isFinalDestination: boolean;
+  } | null>(null);
   const [tacticalAlert, setTacticalAlert] = useState<{ title: string; message: string; type?: 'warning' | 'error' | 'info' } | null>(null);
 
   // Flight animation state
@@ -363,9 +371,17 @@ export default function App() {
           capturePhaseActive: isFinalDestination ? true : prev.capturePhaseActive,
         }));
 
+        // Trigger Arrival Modal with city photo, cultural facts, and the progressive clue
+        setArrivalModalData({
+          destination: nextDestObj,
+          clueNumber: nextDestIndex + 1,
+          totalClues: activeCase.destinations.length,
+          unlockedClueText: nextDestObj.progressiveClue || nextDestObj.clues[0]?.text || '',
+          isFinalDestination,
+        });
+
         if (isFinalDestination) {
           audioEngine.playAlertSiren();
-          setCaptureModalOpen(true);
         } else {
           setActiveView('INVESTIGATION');
         }
@@ -380,8 +396,8 @@ export default function App() {
         }));
 
         setTacticalAlert({
-          title: 'ALERTA DA AGÊNCIA: ROTA INCORRETA',
-          message: `Nenhum sinal do suspeito foi detectado em ${targetCity.city}. O agente retornou a ${currentDest.city}. Tempo de voo consumido na tentativa.`,
+          title: 'ALERTA DA AGÊNCIA: DESTINO INCORRETO',
+          message: `Nenhum sinal do suspeito foi detectado em ${targetCity.city}. As testemunhas e os registros alfandegários locais não correspondem à pista. O agente retornou a ${currentDest.city}. Releia a pista atual com atenção.`,
           type: 'warning',
         });
       }

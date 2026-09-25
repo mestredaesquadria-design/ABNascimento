@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Destination } from '../types/game.ts';
 import { WORLD_CITIES, calculateFlightDurationMinutes, formatMissionTime } from '../services/proceduralGenerator.ts';
-import { Plane, Navigation, CheckCircle2, AlertTriangle, Radio } from 'lucide-react';
+import { Plane, Navigation, CheckCircle2, AlertTriangle, Radio, Globe, Compass, Landmark, Sparkles, MapPin, X } from 'lucide-react';
+import { audioEngine } from '../services/audioService.ts';
 
 interface WorldMapProps {
   currentCity: Destination;
@@ -15,10 +16,7 @@ interface WorldMapProps {
 
 // Convert latitude and longitude to SVG coordinates (Miller Cylindrical projection approx)
 function projectCoords(lat: number, lng: number, width: number, height: number): { x: number; y: number } {
-  // Longitude: -180 to 180 maps to 0 to width
   const x = ((lng + 180) / 360) * width;
-  
-  // Latitude: approx -65 to 75 maps to height to 0
   const latRad = (lat * Math.PI) / 180;
   const y = height * (0.5 - 0.38 * Math.log(Math.tan(Math.PI / 4 + latRad * 0.45)));
   
@@ -40,31 +38,38 @@ export const WorldMap: React.FC<WorldMapProps> = ({
   const mapWidth = 960;
   const mapHeight = 520;
   const [selectedPin, setSelectedPin] = useState<typeof WORLD_CITIES[0] | null>(null);
+  const [citySearchFilter, setCitySearchFilter] = useState('');
 
   const currentCoords = projectCoords(currentCity.lat, currentCity.lng, mapWidth, mapHeight);
 
+  const filteredCities = WORLD_CITIES.filter(c => 
+    c.city.toLowerCase().includes(citySearchFilter.toLowerCase()) ||
+    c.country.toLowerCase().includes(citySearchFilter.toLowerCase()) ||
+    c.airportCode.toLowerCase().includes(citySearchFilter.toLowerCase())
+  );
+
   return (
-    <div className="relative w-full bg-slate-950 border border-cyan-900/40 rounded-xl overflow-hidden shadow-2xl">
+    <div className="relative w-full bg-slate-950 border border-cyan-900/40 rounded-xl overflow-hidden shadow-2xl flex flex-col font-mono">
       {/* Map Header Status Bar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900/90 border-b border-cyan-900/30 text-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-2.5 bg-slate-900/90 border-b border-cyan-900/30 gap-2 text-xs">
         <div className="flex items-center gap-2">
           <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-          <span className="font-mono text-cyan-400 font-semibold tracking-wider uppercase">
+          <span className="font-mono text-cyan-400 font-bold tracking-wider uppercase">
             Radar Global de Vigilância Tática
           </span>
         </div>
-        <div className="flex items-center gap-4 text-slate-400 font-mono">
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block"></span>
-            Local Atual ({currentCity.city})
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-slate-400 font-mono text-[11px]">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block shadow-sm shadow-cyan-400/50"></span>
+            <span>Local Atual ({currentCity.city})</span>
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
-            Investigados ({visitedIndices.length}/6)
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+            <span>Investigadas ({visitedIndices.length})</span>
           </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
-            Destinos Possíveis
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-slate-500 inline-block"></span>
+            <span>Rotas Mundiais</span>
           </span>
         </div>
       </div>
@@ -96,7 +101,7 @@ export const WorldMap: React.FC<WorldMapProps> = ({
           <rect width={mapWidth} height={mapHeight} fill="#020617" />
           <rect width={mapWidth} height={mapHeight} fill="url(#grid)" />
 
-          {/* Stylized Simplified Continents Paths */}
+          {/* Stylized Continents Paths */}
           {/* North America */}
           <path
             d="M 140,90 Q 210,60 270,95 T 310,180 T 260,230 T 210,245 T 160,190 T 120,130 Z"
@@ -144,14 +149,14 @@ export const WorldMap: React.FC<WorldMapProps> = ({
           <line x1="0" y1={mapHeight / 2} x2={mapWidth} y2={mapHeight / 2} stroke="rgba(6, 182, 212, 0.12)" strokeDasharray="4 4" />
           <line x1={mapWidth / 2} y1="0" x2={mapWidth / 2} y2={mapHeight} stroke="rgba(6, 182, 212, 0.12)" strokeDasharray="4 4" />
 
-          {/* Draw connecting flight arcs between visited destinations */}
+          {/* Draw connecting flight arcs between ONLY visited destinations */}
           {allDestinations.slice(0, visitedIndices.length).map((dest, idx) => {
             if (idx === 0) return null;
             const prev = allDestinations[idx - 1];
             const p1 = projectCoords(prev.lat, prev.lng, mapWidth, mapHeight);
             const p2 = projectCoords(dest.lat, dest.lng, mapWidth, mapHeight);
             const midX = (p1.x + p2.x) / 2;
-            const midY = (p1.y + p2.y) / 2 - 35; // Curve height
+            const midY = (p1.y + p2.y) / 2 - 35;
 
             return (
               <path
@@ -181,7 +186,7 @@ export const WorldMap: React.FC<WorldMapProps> = ({
                     d={`M ${currentCoords.x} ${currentCoords.y} Q ${midX} ${midY} ${pTarget.x} ${pTarget.y}`}
                     fill="none"
                     stroke="url(#flightGradient)"
-                    strokeWidth="3"
+                    strokeWidth="3.5"
                     className="animate-pulse"
                     filter="url(#glow)"
                   />
@@ -190,20 +195,26 @@ export const WorldMap: React.FC<WorldMapProps> = ({
             })()
           )}
 
-          {/* City Nodes */}
+          {/* City Nodes: Strict Carmen Sandiego anti-spoiler rule:
+              - ONLY current city (cyan)
+              - ONLY already visited cities (emerald green)
+              - All other destinations are neutral slate (#475569) so future route is NOT spoiled!
+          */}
           {WORLD_CITIES.map((cityItem) => {
             const { x, y } = projectCoords(cityItem.lat, cityItem.lng, mapWidth, mapHeight);
             const isCurrent = cityItem.city === currentCity.city;
             const caseDestIndex = allDestinations.findIndex(d => d.city === cityItem.city);
             const isVisited = caseDestIndex !== -1 && visitedIndices.includes(caseDestIndex);
-            const isDestinationInCase = caseDestIndex !== -1;
             const isSelected = selectedPin?.city === cityItem.city;
 
             return (
               <g
                 key={cityItem.city}
                 className="cursor-pointer transition-transform duration-200"
-                onClick={() => setSelectedPin(cityItem)}
+                onClick={() => {
+                  audioEngine.playClick();
+                  setSelectedPin(cityItem);
+                }}
               >
                 {/* Pulsing Radar Ring for Current Location */}
                 {isCurrent && !reduceMotion && (
@@ -218,19 +229,31 @@ export const WorldMap: React.FC<WorldMapProps> = ({
                   />
                 )}
 
+                {/* Selection Highlight Ring */}
+                {isSelected && (
+                  <circle
+                    cx={x}
+                    cy={y}
+                    r="12"
+                    fill="none"
+                    stroke="#38bdf8"
+                    strokeWidth="2"
+                    strokeDasharray="3 3"
+                    className="animate-spin"
+                  />
+                )}
+
                 {/* Pin Base Circle */}
                 <circle
                   cx={x}
                   cy={y}
-                  r={isCurrent ? 7 : isVisited ? 5.5 : isDestinationInCase ? 5 : 3.5}
+                  r={isCurrent ? 7 : isVisited ? 5.5 : 4}
                   fill={
                     isCurrent
                       ? '#06b6d4'
                       : isVisited
                       ? '#10b981'
-                      : isDestinationInCase
-                      ? '#f59e0b'
-                      : '#475569'
+                      : '#64748b'
                   }
                   stroke="#020617"
                   strokeWidth="2"
@@ -240,16 +263,14 @@ export const WorldMap: React.FC<WorldMapProps> = ({
                 {/* City Label */}
                 <text
                   x={x}
-                  y={y - 10}
+                  y={y - 9}
                   textAnchor="middle"
                   className={`text-[10px] font-mono tracking-tight pointer-events-none select-none ${
                     isCurrent
                       ? 'fill-cyan-300 font-bold text-[11px]'
                       : isVisited
                       ? 'fill-emerald-400 font-semibold'
-                      : isDestinationInCase
-                      ? 'fill-amber-300'
-                      : 'fill-slate-500'
+                      : 'fill-slate-400'
                   }`}
                 >
                   {cityItem.flag} {cityItem.city}
@@ -259,90 +280,144 @@ export const WorldMap: React.FC<WorldMapProps> = ({
           })}
         </svg>
 
-        {/* Selected City Tactical Dossier Flyout */}
+        {/* Selected City Tactical Flyout Card (O Cartão de Destino Solicitado) */}
         {selectedPin && (
-          <div className="absolute bottom-4 left-4 right-4 sm:right-auto sm:w-96 bg-slate-900/95 border border-cyan-500/40 backdrop-blur-md rounded-xl p-4 shadow-2xl z-20 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-start justify-between border-b border-slate-800 pb-2.5 mb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">{selectedPin.flag}</span>
-                  <h4 className="font-bold text-slate-100 text-base">{selectedPin.city}</h4>
-                  <span className="font-mono text-xs px-1.5 py-0.5 bg-slate-800 text-cyan-400 rounded">
-                    {selectedPin.airportCode}
-                  </span>
+          <div className="absolute bottom-3 left-3 right-3 sm:right-auto sm:w-[420px] bg-slate-900/95 border-2 border-cyan-500/60 backdrop-blur-md rounded-2xl p-4 shadow-2xl z-30 animate-in fade-in zoom-in-95 duration-150">
+            
+            <div className="flex items-start justify-between border-b border-slate-800 pb-2.5 mb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{selectedPin.flag}</span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="font-black text-slate-100 text-base">{selectedPin.city}</h4>
+                    <span className="font-mono text-xs px-1.5 py-0.5 bg-slate-800 text-cyan-300 rounded font-bold">
+                      {selectedPin.airportCode}
+                    </span>
+                  </div>
+                  <p className="text-xs text-cyan-200/80">{selectedPin.country}</p>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">{selectedPin.country}</p>
               </div>
+
               <button
                 onClick={() => setSelectedPin(null)}
-                className="text-slate-400 hover:text-slate-100 p-1 text-sm font-mono"
+                className="text-slate-400 hover:text-slate-100 p-1 text-base font-mono cursor-pointer"
+                title="Fechar Cartão"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-1.5 text-xs text-slate-300 font-mono mb-4">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Ponto Notório:</span>
-                <span className="text-slate-200">{selectedPin.landmark}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Moeda Local:</span>
-                <span className="text-slate-200">{selectedPin.currency}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Tempo de Voo Estimado:</span>
-                <span className="text-cyan-400 font-semibold">
-                  {selectedPin.city === currentCity.city
-                    ? 'Localização Atual'
-                    : formatMissionTime(
-                        calculateFlightDurationMinutes(
-                          currentCity.lat,
-                          currentCity.lng,
-                          selectedPin.lat,
-                          selectedPin.lng
-                        )
-                      ) + ' h'}
+            {/* Photo Preview of Selected City */}
+            {selectedPin.image && (
+              <div className="relative h-28 w-full rounded-xl overflow-hidden mb-2.5 border border-slate-800">
+                <img
+                  src={selectedPin.image}
+                  alt={selectedPin.city}
+                  className="w-full h-full object-cover brightness-80 contrast-110"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
+                <span className="absolute bottom-1.5 left-2 text-[11px] text-white font-bold drop-shadow">
+                  {selectedPin.landmark}
                 </span>
               </div>
+            )}
+
+            {/* Cultural & Travel Information */}
+            <div className="space-y-1.5 text-xs text-slate-300 mb-3 font-mono">
+              <div className="flex items-center gap-1.5">
+                <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Moeda & Idioma: <strong className="text-slate-100">{selectedPin.currency} · {selectedPin.language}</strong></span>
+              </div>
+
+              {selectedPin.culturalFact && (
+                <div className="flex items-start gap-1.5 text-[11px] text-slate-400">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                  <span>{selectedPin.culturalFact}</span>
+                </div>
+              )}
+
+              {selectedPin.city !== currentCity.city && (
+                <div className="flex items-center gap-1.5 text-cyan-300 font-bold pt-1">
+                  <Plane className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Duração Estimada do Voo: {formatMissionTime(calculateFlightDurationMinutes(currentCity.lat, currentCity.lng, selectedPin.lat, selectedPin.lng))} h</span>
+                </div>
+              )}
             </div>
 
+            {/* Travel Action Button */}
             {selectedPin.city === currentCity.city ? (
-              <div className="flex items-center gap-2 text-xs text-cyan-400 bg-cyan-950/40 border border-cyan-800/50 p-2.5 rounded-lg">
-                <Navigation className="w-4 h-4 shrink-0" />
-                <span>O Agente X está posicionado nesta localidade atualmente.</span>
+              <div className="w-full py-2.5 px-4 bg-slate-950 border border-cyan-800/40 rounded-xl text-center text-xs text-cyan-400 font-bold">
+                📍 Você já se encontra investigando em {selectedPin.city}
               </div>
             ) : (
               <button
+                type="button"
+                disabled={isTraveling}
                 onClick={() => {
+                  audioEngine.playClick();
                   onTravelToCity(selectedPin);
                   setSelectedPin(null);
                 }}
-                disabled={isTraveling}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-700 disabled:bg-slate-800 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-lg transition-colors shadow-lg shadow-cyan-900/30"
+                className={`w-full py-3 px-4 rounded-xl font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${
+                  isTraveling 
+                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-cyan-950/60'
+                }`}
               >
                 <Plane className="w-4 h-4" />
-                {isTraveling ? 'Calculando Voo...' : `Viajar para ${selectedPin.city}`}
+                <span>✈️ VIAJAR PARA {selectedPin.city.toUpperCase()}</span>
               </button>
             )}
+
           </div>
         )}
       </div>
 
-      {/* Footer Info Strip */}
-      <div className="px-4 py-2 bg-slate-900/60 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-xs text-slate-400">
-        <div>
-          <span className="text-slate-500 font-mono mr-1">Coordenadas:</span>
-          <span className="font-mono text-cyan-300">
-            {currentCity.lat.toFixed(4)}° N, {currentCity.lng.toFixed(4)}° W
+      {/* Quick City Directory / Departure Board */}
+      <div className="p-3 bg-slate-950 border-t border-slate-800/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+            Painel de Embarque de Capitais Internacionais:
           </span>
+          <input
+            type="text"
+            value={citySearchFilter}
+            onChange={(e) => setCitySearchFilter(e.target.value)}
+            placeholder="Filtrar cidade, país ou código aeroportuário..."
+            className="px-3 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-mono w-full sm:w-64"
+          />
         </div>
-        <div className="flex items-center gap-3 font-mono">
-          <span>{currentCity.flag} {currentCity.country}</span>
-          <span>·</span>
-          <span>Terminal: {currentCity.airportCode}</span>
+
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {filteredCities.map((city) => {
+            const isCurrent = city.city === currentCity.city;
+            const isSelected = selectedPin?.city === city.city;
+
+            return (
+              <button
+                key={`btn-city-${city.city}`}
+                onClick={() => {
+                  audioEngine.playClick();
+                  setSelectedPin(city);
+                }}
+                className={`px-3 py-1.5 rounded-lg border text-xs whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer ${
+                  isCurrent
+                    ? 'bg-cyan-950 border-cyan-500 text-cyan-300 font-bold'
+                    : isSelected
+                    ? 'bg-slate-800 border-cyan-400 text-slate-100 ring-1 ring-cyan-400'
+                    : 'bg-slate-900 hover:bg-slate-850 border-slate-800 text-slate-300'
+                }`}
+              >
+                <span>{city.flag}</span>
+                <span>{city.city}</span>
+                <span className="text-[10px] text-slate-500">({city.airportCode})</span>
+              </button>
+            );
+          })}
         </div>
       </div>
+
     </div>
   );
 };

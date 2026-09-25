@@ -33,21 +33,20 @@ app.post('/api/gemini/generate-case', async (req, res) => {
   }
 
   try {
-    const cluesCount = difficulty === 'easy' ? 3 : difficulty === 'medium' ? 5 : 7;
+    const destinationsCount = difficulty === 'easy' ? 3 : difficulty === 'medium' ? 5 : 7;
     const prompt = `Você é o Diretor da Agência Internacional de Inteligência (AGENTE X).
-Crie um caso de investigação internacional completo, envolvente e com rigorosa coerência lógica para o agente ${agentCodename} (${agentNationality}).
-Dificuldade: ${difficulty.toUpperCase()} (${cluesCount} pistas principais por etapa).
+Crie um caso de investigação internacional completo com o SISTEMA DE PISTAS PROGRESSIVAS para o agente ${agentCodename} (${agentNationality}).
+Dificuldade: ${difficulty.toUpperCase()} (${destinationsCount} cidades/pistas em sequência progressiva).
 Etapa da Campanha: ${stageNumber}.
 
-REGRAS RÍGIDAS DE COERÊNCIA:
+REGRAS RÍGIDAS DO SISTEMA DE PISTAS PROGRESSIVAS:
 1. Existe UMA solução única e inequívoca.
-2. O suspeito cometeu um crime fictício de alto nível (ex: roubo de protótipo de satélite quântico, infiltração cibernética de cofre bancário em Zurique, contrabando de relíquia arqueológica babilônica, etc.).
-3. O suspeito viaja por exatamente 6 cidades internacionais reais e distintas em ordem cronológica (ex: Nova York -> Lisboa -> Roma -> Cairo -> Mumbai -> Tóquio).
-4. Em cada cidade, há pistas que revelam traços do suspeito (aparência, apelido, hábitos, veículo, cúmplice) e apontam com clareza ou dedução lógica a PRÓXIMA cidade da rota de fuga.
-5. Cada cidade deve conter ${cluesCount} pistas detalhadas, 1 testemunha interrogável e documentos ou evidências associadas.
-6. A última cidade é o esconderijo final onde o suspeito está prestes a fugir para águas internacionais ou entrar em búnquer.
-7. Deve haver UMA evidência-chave irrefutável que prova a identidade do suspeito no final (ex: "Registro de transação com chave criptográfica AX-99", "Passaporte falso com carimbo biométrico violado").
-8. Responda em Português do Brasil com linguagem cinematográfica de agência de inteligência moderna.`;
+2. O suspeito viaja por exatamente ${destinationsCount} cidades internacionais reais e distintas em ordem cronológica estrita.
+3. CADA CIDADE deve conter sua pista única que indica para onde o suspeito fugiu (moeda local, monumento famoso, idioma, costumes, código de aeroporto).
+4. O jogador só descobre uma pista por vez: a pista da cidade 1 indica a cidade 2; a pista da cidade 2 indica a cidade 3, até a cidade ${destinationsCount} que é o esconderijo final.
+5. A última cidade (${destinationsCount}) é o esconderijo final onde o suspeito está preste a fugir definitivamente.
+6. Deve haver UMA evidência-chave irrefutável que prova a identidade do suspeito no final.
+7. Responda em Português do Brasil com tom tático de espionagem moderna.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.8-flash',
@@ -158,10 +157,27 @@ REGRAS RÍGIDAS DE COERÊNCIA:
     });
 
     const parsed = JSON.parse(response.text || '{}');
-    // Ensure all 6 destinations have correct coordinates and fallback sanity
-    if (!parsed.destinations || parsed.destinations.length < 4) {
-      throw new Error('Case generation yielded incomplete destinations');
+    const minDests = difficulty === 'easy' ? 3 : difficulty === 'medium' ? 5 : 7;
+    if (!parsed.destinations || parsed.destinations.length < minDests) {
+      throw new Error(`Case generation yielded incomplete destinations: ${parsed.destinations?.length} vs ${minDests}`);
     }
+
+    // Enrich destinations with photo and cultural data from WORLD_CITIES if absent
+    parsed.destinations = parsed.destinations.map((d: any, idx: number) => {
+      const match = WORLD_CITIES.find(c => c.city.toLowerCase() === d.city.toLowerCase());
+      return {
+        ...d,
+        order: idx + 1,
+        flag: match?.flag || d.flag || '📍',
+        landmark: match?.landmark || d.landmark || 'Marco Arquitetônico Central',
+        culturalFact: match?.culturalFact || d.culturalFact || 'Gastronomia e costumes regionais marcantes.',
+        historicFact: match?.historicFact || d.historicFact || 'Centro histórico com séculos de tradição.',
+        geoInfo: match?.geoInfo || d.geoInfo || 'Posição estratégica na malha aérea internacional.',
+        photoUrl: match?.image || d.photoUrl,
+        currency: match?.currency || d.currency || 'Moeda Local',
+        language: match?.language || d.language || 'Oficial',
+      };
+    });
 
     return res.json({ caseData: parsed, source: 'gemini' });
   } catch (err: any) {
