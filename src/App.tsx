@@ -17,7 +17,8 @@ import {
 import { 
   WORLD_CITIES, 
   calculateFlightDurationMinutes, 
-  formatMissionTime 
+  formatMissionTime,
+  generateProceduralCase 
 } from './services/proceduralGenerator.ts';
 import { ApiClient } from './services/apiClient.ts';
 import { audioEngine } from './services/audioService.ts';
@@ -56,7 +57,8 @@ import {
   ArrowLeft,
   Volume2,
   VolumeX,
-  Home
+  Home,
+  Play
 } from 'lucide-react';
 
 export default function App() {
@@ -115,9 +117,28 @@ export default function App() {
     };
   });
 
-  const [activeCase, setActiveCase] = useState<CaseData | null>(() => StorageService.getActiveCase());
+  const [activeCase, setActiveCase] = useState<CaseData | null>(() => {
+    const saved = StorageService.getActiveCase();
+    if (saved && Array.isArray(saved.destinations) && saved.destinations.length >= 3 && saved.destinations[0]?.city) {
+      return saved;
+    }
+    return null;
+  });
+
   const [missionState, setMissionState] = useState<MissionState>(() => {
-    return StorageService.getActiveMission() || {
+    const savedMission = StorageService.getActiveMission();
+    const savedCase = StorageService.getActiveCase();
+    if (savedMission && savedCase && Array.isArray(savedCase.destinations) && savedCase.destinations.length >= 3) {
+      // Ensure currentCityIndex is within bounds
+      const validIndex = Math.min(Math.max(0, savedMission.currentCityIndex || 0), savedCase.destinations.length - 1);
+      return {
+        ...savedMission,
+        currentCityIndex: validIndex,
+        visitedCityIndices: savedMission.visitedCityIndices?.length ? savedMission.visitedCityIndices : [0],
+        discoveredClueIds: savedMission.discoveredClueIds || [],
+      };
+    }
+    return {
       currentCityIndex: 0,
       visitedCityIndices: [0],
       discoveredClueIds: [],
@@ -291,10 +312,34 @@ export default function App() {
         profile.codename
       );
 
+      // Validate caseData structure
+      if (!caseData || !Array.isArray(caseData.destinations) || caseData.destinations.length < 3) {
+        throw new Error('Incomplete case data structure');
+      }
+
+      // Ensure every destination has at least one clue with an id
+      caseData.destinations = caseData.destinations.map((dest, i) => {
+        if (!dest.clues || !Array.isArray(dest.clues) || dest.clues.length === 0) {
+          dest.clues = [
+            {
+              id: `clue-${i}-progressive`,
+              type: 'witness',
+              title: i === 0 ? 'Pista 1 — Transmissão Inicial' : `Pista ${i + 1} — Descoberta`,
+              text: dest.progressiveClue || `O suspeito esteve em ${dest.city} e seguiu viagem.`,
+              source: dest.witness?.role || 'Agência',
+              hintToNextCity: i < caseData.destinations.length - 1,
+            }
+          ];
+        }
+        return dest;
+      });
+
+      const initialClueIds = caseData.destinations[0].clues.map(c => c.id);
+
       const initialMission: MissionState = {
         currentCityIndex: 0,
         visitedCityIndices: [0],
-        discoveredClueIds: caseData.destinations[0].clues.map(c => c.id),
+        discoveredClueIds: initialClueIds,
         travelTimeMinutes: 0,
         investigationTimeMinutes: 15, // initial briefing & intake
         capturePhaseActive: false,
@@ -316,7 +361,34 @@ export default function App() {
       setActiveView('INVESTIGATION');
       audioEngine.playSuccess();
     } catch (err) {
-      console.error(err);
+      console.warn('Deploying procedural case generator fallback:', err);
+      const fallbackCase = generateProceduralCase(difficulty, stageNumber, profile.nationality);
+      const initialClueIds = fallbackCase.destinations[0].clues.map(c => c.id);
+
+      const fallbackMission: MissionState = {
+        currentCityIndex: 0,
+        visitedCityIndices: [0],
+        discoveredClueIds: initialClueIds,
+        travelTimeMinutes: 0,
+        investigationTimeMinutes: 15,
+        capturePhaseActive: false,
+        captureTimeRemainingSeconds: 1200,
+        interrogatedWitnesses: [],
+        inspectedDocuments: [],
+        hintsUsed: 0,
+        wrongTravelAttempts: 0,
+        correctAnswersCount: 1,
+        interrogationLog: [],
+      };
+
+      setActiveCase(fallbackCase);
+      setMissionState(fallbackMission);
+      StorageService.saveActiveCase(fallbackCase);
+      StorageService.saveActiveMission(fallbackMission);
+
+      setNewOpModalOpen(false);
+      setActiveView('INVESTIGATION');
+      audioEngine.playSuccess();
     } finally {
       setIsGeneratingCase(false);
     }
@@ -715,7 +787,8 @@ export default function App() {
         )}
 
         {/* 3. INVESTIGATION WORKSPACE */}
-        {activeView === 'INVESTIGATION' && activeCase && currentDestination && (
+        {activeView === 'INVESTIGATION' && (
+          activeCase && currentDestination ? (
           <div className="max-w-6xl mx-auto space-y-4">
             {/* Tactical Investigation Top Ribbon */}
             <div className="bg-slate-900 border border-cyan-900/40 rounded-xl p-4 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-3 font-mono text-xs">
@@ -831,7 +904,22 @@ export default function App() {
                 <div className="min-h-[480px]">
                   {investigationTab === 'clues' && (
                     <EvidenceDossier
+                      currentClue={currentDestination.clues[0]}
                       clues={currentDestination.clues}
+                      currentStageIndex={missionState.currentCityIndex}
+                      totalStages={activeCase.destinations.length}
+                      historyClues={missionState.visitedCityIndices.map(idx => ({
+                        stageNumber: idx + 1,
+                        cityName: activeCase.destinations[idx]?.city || '',
+                        clue: activeCase.destinations[idx]?.clues[0] || {
+                          id: `clue-${idx}`,
+                          type: 'witness',
+                          title: `Pista #${idx + 1}`,
+                          text: activeCase.destinations[idx]?.progressiveClue || '',
+                          source: activeCase.destinations[idx]?.witness?.role || 'Agência',
+                          hintToNextCity: idx < activeCase.destinations.length - 1,
+                        },
+                      }))}
                       document={currentDestination.document}
                       voiceSynthEnabled={settings.voiceSynth}
                     />
@@ -911,6 +999,34 @@ export default function App() {
               </div>
             </div>
           </div>
+          ) : (
+            <div className="max-w-2xl mx-auto p-8 sm:p-12 bg-slate-900 border border-slate-800 rounded-2xl text-center font-mono space-y-4 shadow-xl">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-cyan-950/60 border border-cyan-800/40 flex items-center justify-center text-cyan-400">
+                <Search className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-100 uppercase">
+                Nenhuma Operação em Andamento
+              </h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                Você não possui uma investigação ativa registrada no terminal. Inicie uma nova operação mundial ou acesse a Central Estratégica.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+                <button
+                  onClick={() => setNewOpModalOpen(true)}
+                  className="px-6 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-cyan-950/50 flex items-center gap-2 cursor-pointer"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  Iniciar Nova Operação
+                </button>
+                <button
+                  onClick={() => navigateTo('HQ')}
+                  className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs uppercase tracking-wider rounded-xl transition-all border border-slate-700 cursor-pointer"
+                >
+                  Ir para Central (QG)
+                </button>
+              </div>
+            </div>
+          )
         )}
 
         {/* 4. FULLSCREEN TACTICAL MAP VIEW */}

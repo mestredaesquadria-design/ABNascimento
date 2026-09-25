@@ -9,21 +9,26 @@ export const ApiClient = {
     agentCodename: string
   ): Promise<{ caseData: CaseData; source: string }> {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
       const res = await fetch('/api/gemini/generate-case', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ difficulty, stageNumber, agentNationality, agentCodename }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         throw new Error(`Server returned ${res.status}`);
       }
 
       const data = await res.json();
-      if (data.caseData && data.caseData.destinations?.length >= 3) {
+      if (data.caseData && Array.isArray(data.caseData.destinations) && data.caseData.destinations.length >= 3) {
         return data;
       }
-      throw new Error('Invalid case response');
+      throw new Error('Invalid case response structure');
     } catch (err) {
       console.warn('Falling back to local procedural case generator:', err);
       const fallback = generateProceduralCase(difficulty, stageNumber, agentNationality);
@@ -39,11 +44,16 @@ export const ApiClient = {
     city: string = ''
   ): Promise<string> {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+
       const res = await fetch('/api/gemini/witness-interrogate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ suspectName, witness, question, evidenceShown, city }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         throw new Error(`Server returned ${res.status}`);
@@ -63,11 +73,16 @@ export const ApiClient = {
     recentClues: any[] = []
   ): Promise<string> {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+
       const res = await fetch('/api/gemini/mestre-hint', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentCity, nextTargetCity, level, recentClues }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       if (!res.ok) {
         throw new Error(`Server returned ${res.status}`);

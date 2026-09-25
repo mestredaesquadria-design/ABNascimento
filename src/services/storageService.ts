@@ -61,7 +61,12 @@ export const StorageService = {
   getActiveCase(): CaseData | null {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ACTIVE_CASE);
-      return data ? JSON.parse(data) : null;
+      if (!data) return null;
+      const parsed = JSON.parse(data);
+      if (parsed && Array.isArray(parsed.destinations) && parsed.destinations.length >= 3 && parsed.destinations[0]?.city) {
+        return parsed;
+      }
+      return null;
     } catch (e) {
       return null;
     }
@@ -80,7 +85,12 @@ export const StorageService = {
   getActiveMission(): MissionState | null {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ACTIVE_MISSION);
-      return data ? JSON.parse(data) : null;
+      if (!data) return null;
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed.currentCityIndex === 'number' && Array.isArray(parsed.visitedCityIndices)) {
+        return parsed;
+      }
+      return null;
     } catch (e) {
       return null;
     }

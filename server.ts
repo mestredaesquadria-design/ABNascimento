@@ -21,7 +21,7 @@ const ai = new GoogleGenAI({
 });
 
 // Fallback procedural generator if Gemini API key is missing, rate-limited, or network issue
-import { generateProceduralCase, getProceduralHint, getProceduralWitnessResponse } from './src/services/proceduralGenerator.ts';
+import { WORLD_CITIES, generateProceduralCase, getProceduralHint, getProceduralWitnessResponse } from './src/services/proceduralGenerator.ts';
 
 // 1. Generate Case Endpoint
 app.post('/api/gemini/generate-case', async (req, res) => {
@@ -48,7 +48,7 @@ REGRAS RÍGIDAS DO SISTEMA DE PISTAS PROGRESSIVAS:
 6. Deve haver UMA evidência-chave irrefutável que prova a identidade do suspeito no final.
 7. Responda em Português do Brasil com tom tático de espionagem moderna.`;
 
-    const response = await ai.models.generateContent({
+    const aiCall = ai.models.generateContent({
       model: 'gemini-3.8-flash',
       contents: prompt,
       config: {
@@ -156,6 +156,12 @@ REGRAS RÍGIDAS DO SISTEMA DE PISTAS PROGRESSIVAS:
       },
     });
 
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('AI generation timeout')), 3500)
+    );
+
+    const response: any = await Promise.race([aiCall, timeoutPromise]);
+
     const parsed = JSON.parse(response.text || '{}');
     const minDests = difficulty === 'easy' ? 3 : difficulty === 'medium' ? 5 : 7;
     if (!parsed.destinations || parsed.destinations.length < minDests) {
@@ -164,7 +170,7 @@ REGRAS RÍGIDAS DO SISTEMA DE PISTAS PROGRESSIVAS:
 
     // Enrich destinations with photo and cultural data from WORLD_CITIES if absent
     parsed.destinations = parsed.destinations.map((d: any, idx: number) => {
-      const match = WORLD_CITIES.find(c => c.city.toLowerCase() === d.city.toLowerCase());
+      const match = WORLD_CITIES.find(c => c.city.toLowerCase() === (d.city || '').toLowerCase());
       return {
         ...d,
         order: idx + 1,
@@ -181,7 +187,7 @@ REGRAS RÍGIDAS DO SISTEMA DE PISTAS PROGRESSIVAS:
 
     return res.json({ caseData: parsed, source: 'gemini' });
   } catch (err: any) {
-    console.error('Gemini Case Generation error:', err?.message || err);
+    console.warn('Gemini Case Generation fallback activated:', err?.message || err);
     const fallbackCase = generateProceduralCase(difficulty, stageNumber, agentNationality);
     return res.json({ caseData: fallbackCase, source: 'procedural-fallback' });
   }
@@ -204,12 +210,16 @@ ${evidenceShown ? `O Agente X apresentou esta evidência: "${evidenceShown.title
 
 Responda em 2 a 3 frases realistas, com tom natural, sem revelar diretamente toda a solução, mantendo o suspense de uma investigação policial internacional. Seja consistente com o papel da testemunha.`;
 
-    const response = await ai.models.generateContent({
+    const aiCall = ai.models.generateContent({
       model: 'gemini-3.8-flash',
       contents: prompt,
     });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Witness response timeout')), 2500)
+    );
+    const response: any = await Promise.race([aiCall, timeoutPromise]);
 
-    return res.json({ reply: response.text?.trim() || 'Não tenho certeza, agente... vi alguém com essa descrição saindo com pressa.' });
+    return res.json({ reply: response.text?.trim() || getProceduralWitnessResponse(witness, question, evidenceShown) });
   } catch (err) {
     const reply = getProceduralWitnessResponse(witness, question, evidenceShown);
     return res.json({ reply });
@@ -241,10 +251,14 @@ Siga estritamente este nível de dica:
 ${levelGuide}
 Responda em 1 ou 2 frases curtas, táticas e encorajadoras.`;
 
-    const response = await ai.models.generateContent({
+    const aiCall = ai.models.generateContent({
       model: 'gemini-3.8-flash',
       contents: prompt,
     });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Mestre hint timeout')), 2500)
+    );
+    const response: any = await Promise.race([aiCall, timeoutPromise]);
 
     return res.json({ hint: response.text?.trim() || getProceduralHint(currentCity, nextTargetCity, level) });
   } catch (err) {

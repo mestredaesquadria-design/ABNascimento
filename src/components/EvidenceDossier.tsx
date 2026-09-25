@@ -4,10 +4,11 @@ import { FileText, Plane, ShieldAlert, Lock, Unlock, KeyRound, Eye, CheckCircle,
 import { audioEngine } from '../services/audioService.ts';
 
 interface EvidenceDossierProps {
-  currentClue: Clue;
-  currentStageIndex: number;
-  totalStages: number;
-  historyClues: { stageNumber: number; cityName: string; clue: Clue }[];
+  currentClue?: Clue;
+  clues?: Clue[];
+  currentStageIndex?: number;
+  totalStages?: number;
+  historyClues?: { stageNumber: number; cityName: string; clue: Clue }[];
   document?: CaseDocument;
   onClueDiscovered?: (clueId: string) => void;
   voiceSynthEnabled?: boolean;
@@ -15,13 +16,22 @@ interface EvidenceDossierProps {
 
 export const EvidenceDossier: React.FC<EvidenceDossierProps> = ({
   currentClue,
-  currentStageIndex,
-  totalStages,
-  historyClues,
+  clues,
+  currentStageIndex = 0,
+  totalStages = 5,
+  historyClues = [],
   document,
   onClueDiscovered,
   voiceSynthEnabled = true,
 }) => {
+  const effectiveClue: Clue = currentClue || (clues && clues[0]) || {
+    id: 'clue-default',
+    type: 'witness',
+    title: 'Pista de Campo',
+    text: 'Investigação em andamento no destino atual.',
+    source: 'Agência',
+    hintToNextCity: true,
+  };
   const [activeTab, setActiveTab] = useState<'current' | 'history' | 'document' | 'cipher'>('current');
   const [selectedHistoryClue, setSelectedHistoryClue] = useState<Clue | null>(null);
   const [cipherDecrypted, setCipherDecrypted] = useState(false);
@@ -157,17 +167,17 @@ export const EvidenceDossier: React.FC<EvidenceDossierProps> = ({
                   <span className={`text-[10px] font-bold uppercase tracking-wider block ${
                     isFinalStage ? 'text-red-400' : 'text-cyan-400'
                   }`}>
-                    {currentClue.source || 'Inteligência da Central'}
+                    {effectiveClue.source || 'Inteligência da Central'}
                   </span>
                   <h4 className="text-base font-bold text-slate-100 mt-0.5 flex items-center gap-2">
                     <Search className={`w-4 h-4 ${isFinalStage ? 'text-red-400' : 'text-cyan-400'}`} />
-                    <span>{currentClue.title}</span>
+                    <span>{effectiveClue.title}</span>
                   </h4>
                 </div>
 
                 {voiceSynthEnabled && (
                   <button
-                    onClick={() => handleSpeak(currentClue.text)}
+                    onClick={() => handleSpeak(effectiveClue.text)}
                     title="Ouvir leitura da pista"
                     className="p-2 text-slate-400 hover:text-cyan-300 bg-slate-900 border border-slate-700/80 rounded-lg hover:border-cyan-500 transition-colors cursor-pointer"
                   >
@@ -178,7 +188,7 @@ export const EvidenceDossier: React.FC<EvidenceDossierProps> = ({
 
               {/* The Clue Text Box */}
               <div className="p-4 bg-slate-900/90 border-l-4 border-cyan-400 rounded-r-xl text-slate-100 text-sm leading-relaxed font-sans font-medium">
-                "{currentClue.text}"
+                "{effectiveClue.text}"
               </div>
 
               {/* Tactical Guideline Box */}

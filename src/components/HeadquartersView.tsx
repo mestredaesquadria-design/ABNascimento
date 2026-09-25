@@ -56,25 +56,37 @@ export const HeadquartersView: React.FC<HeadquartersViewProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {activeCase ? (
-              <button
-                onClick={() => {
-                  audioEngine.playClick();
-                  onResumeInvestigation();
-                }}
-                className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold font-mono text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-cyan-950/50 flex items-center gap-2 transition-colors"
-              >
-                <Search className="w-4 h-4" />
-                Continuar Investigação
-              </button>
+              <>
+                <button
+                  onClick={() => {
+                    audioEngine.playClick();
+                    onNewOperation();
+                  }}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold font-mono text-xs uppercase tracking-wider rounded-xl transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <Play className="w-4 h-4" />
+                  Nova Operação
+                </button>
+                <button
+                  onClick={() => {
+                    audioEngine.playClick();
+                    onResumeInvestigation();
+                  }}
+                  className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold font-mono text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-cyan-950/50 flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Search className="w-4 h-4" />
+                  Continuar Investigação
+                </button>
+              </>
             ) : (
               <button
                 onClick={() => {
                   audioEngine.playClick();
                   onNewOperation();
                 }}
-                className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold font-mono text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-cyan-950/50 flex items-center gap-2 transition-colors"
+                className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold font-mono text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-cyan-950/50 flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <Play className="w-4 h-4 fill-current" />
                 Nova Operação

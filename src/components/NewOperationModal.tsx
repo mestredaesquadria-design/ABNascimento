@@ -247,10 +247,19 @@ export const NewOperationModal: React.FC<NewOperationModalProps> = ({
               type="button"
               disabled={isGenerating}
               onClick={handleLaunch}
-              className="flex items-center gap-2 px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-lg transition-all shadow-lg shadow-cyan-900/30 font-mono"
+              className="flex items-center gap-2 px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold text-xs uppercase tracking-wider rounded-lg transition-all shadow-lg shadow-cyan-900/30 font-mono cursor-pointer disabled:cursor-not-allowed"
             >
-              <Zap className="w-4 h-4" />
-              {isGenerating ? 'Compilando Dossiê com IA...' : 'Carregar Operação'}
+              {isGenerating ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                  <span>Carregando Operação...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4" />
+                  <span>Carregar Operação</span>
+                </>
+              )}
             </button>
           </div>
         </div>
