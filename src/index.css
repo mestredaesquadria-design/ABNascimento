@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+/* Base HTML font scaling for the entire application */
+html {
+  font-size: 18px; /* Elevated base for high readability */
+  -webkit-text-size-adjust: 100%;
+}
+
+html.font-scale-normal {
+  font-size: 17px;
+}
+
+html.font-scale-large {
+  font-size: 20px;
+}
+
+html.font-scale-huge {
+  font-size: 23px;
+}
+
+html, body, #root {
+  min-height: 100%;
+  width: 100%;
+}
+
+/* Elevated comfortable body defaults */
+body {
+  font-size: 1rem;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+}
+
+/* Minimum readable typography overrides - prevents unreadable micro-text */
+.text-\[9px\],
+.text-\[10px\],
+.text-\[11px\],
+.text-\[12px\],
+.text-xs {
+  font-size: 0.85rem !important;
+  line-height: 1.45 !important;
+}
+
+.text-sm {
+  font-size: 0.975rem !important;
+  line-height: 1.55 !important;
+}
+
+.text-base {
+  font-size: 1.1rem !important;
+  line-height: 1.6 !important;
+}
+
+/* Specific scaling for Large Font Mode */
+.font-scale-large .text-\[9px\],
+.font-scale-large .text-\[10px\],
+.font-scale-large .text-\[11px\],
+.font-scale-large .text-\[12px\],
+.font-scale-large .text-xs {
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+}
+
+.font-scale-large .text-sm {
+  font-size: 1.1rem !important;
+  line-height: 1.6 !important;
+}
+
+.font-scale-large .text-base {
+  font-size: 1.25rem !important;
+  line-height: 1.65 !important;
+}
+
+/* Specific scaling for Extra Large (Huge) Font Mode */
+.font-scale-huge .text-\[9px\],
+.font-scale-huge .text-\[10px\],
+.font-scale-huge .text-\[11px\],
+.font-scale-huge .text-\[12px\],
+.font-scale-huge .text-xs {
+  font-size: 1.05rem !important;
+  line-height: 1.55 !important;
+}
+
+.font-scale-huge .text-sm {
+  font-size: 1.22rem !important;
+  line-height: 1.65 !important;
+}
+
+.font-scale-huge .text-base {
+  font-size: 1.38rem !important;
+  line-height: 1.7 !important;
+}
+
+/* Custom Tactical Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 6px;
+  border: 1px solid #0f172a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #0891b2;
+}

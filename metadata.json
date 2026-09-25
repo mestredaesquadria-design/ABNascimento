@@ -1,0 +1,6 @@
+{
+  "name": "Agente X — Operação Mundial",
+  "description": "Jogo completo de investigação internacional, espionagem, dedução e perseguição mundial com IA diretora de casos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
